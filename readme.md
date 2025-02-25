@@ -8,7 +8,7 @@ This project implements a multi-agent reinforcement learning system for autonomo
 - Python 3.7.9
 - PyTorch 1.13.0+cu117
 - Stable-Baselines3 2.0.0
-- Gymnasium 0.23.1
+- Gym 0.23.1
 - Ray 2.2.0
 - TensorFlow 2.3.1
 - TensorBoard 2.1.0
