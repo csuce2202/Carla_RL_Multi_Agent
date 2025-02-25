@@ -1,0 +1,20 @@
+ENV_CONFIG = {
+    "map": "Town01",
+    "carla_port": 2000,
+    "carla_timeout": 20.0,
+    "synchronous": True,
+    "delta_seconds": 0.05,
+    "no_rendering": False,
+    "weather": "ClearNoon",
+    "camera_resolution_x": 640,
+    "camera_resolution_y": 480,
+    "lidar_points_per_second": 100000,
+    "lidar_range": 100.0,
+    "radar_points_per_second": 1500,
+    "radar_range": 100.0,
+    "max_episode_steps": 1000,
+    "reward_speed_coefficient": 0.1,
+    "reward_collision_penalty": 100.0,
+    "reward_lane_deviation_penalty": 0.1,
+    "reward_completion_bonus": 100.0
+}
