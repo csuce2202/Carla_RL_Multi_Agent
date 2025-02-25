@@ -2,6 +2,8 @@ import os
 import numpy as np
 import torch
 import gym
+import time
+from typing import Dict, List, Any
 from stable_baselines3.common.callbacks import BaseCallback, CheckpointCallback
 from stable_baselines3.common.results_plotter import load_results, ts2xy
 from stable_baselines3.common.monitor import Monitor
@@ -116,6 +118,58 @@ def create_callback(checkpoint_freq, checkpoint_path, log_dir=None, verbose=1):
     return callbacks
 
 
+def preprocess_lidar(lidar_data):
+    """
+    预处理LiDAR数据以确保正确的形状
+
+    参数:
+        lidar_data: 原始LiDAR数据
+
+    返回:
+        处理后的LiDAR数据，形状为(32, 1024, 3)
+    """
+    import numpy as np
+
+    # 检查输入形状
+    if len(lidar_data.shape) == 2 and lidar_data.shape[1] == 3:
+        # 当接收到形状为(N, 3)的数据时，需要重塑为(32, 1024, 3)
+
+        # 确定点的数量
+        n_points = lidar_data.shape[0]
+
+        # 如果点数太少，进行填充
+        if n_points < 32 * 1024:
+            # 创建填充数组
+            padding = np.zeros((32 * 1024 - n_points, 3))
+            lidar_data = np.vstack([lidar_data, padding])
+        # 如果点数太多，进行裁剪
+        elif n_points > 32 * 1024:
+            lidar_data = lidar_data[:32 * 1024]
+
+        # 重塑为(32, 1024, 3)
+        lidar_data = lidar_data.reshape(32, 1024, 3)
+
+    # 如果已经是正确的形状，不做处理
+    elif lidar_data.shape == (32, 1024, 3):
+        pass
+    else:
+        print(f"警告: 意外的LiDAR数据形状: {lidar_data.shape}, 尝试调整")
+        # 尝试调整为期望的形状
+        total_points = np.prod(lidar_data.shape) // 3
+        if total_points >= 32 * 1024:
+            # 展平并重塑
+            flattened = lidar_data.reshape(-1, 3)
+            lidar_data = flattened[:32 * 1024].reshape(32, 1024, 3)
+        else:
+            # 创建空数组并填充可用数据
+            reshaped = np.zeros((32, 1024, 3))
+            flattened = lidar_data.reshape(-1, 3)
+            points_to_copy = min(flattened.shape[0], 32 * 1024)
+            reshaped.reshape(-1, 3)[:points_to_copy] = flattened[:points_to_copy]
+            lidar_data = reshaped
+
+    return lidar_data
+
 def plot_learning_curve(log_folder, title='Learning Curve'):
     """
     绘制学习曲线
@@ -178,72 +232,145 @@ def wrap_env_monitor(env, log_dir):
     return Monitor(env, log_dir)
 
 
-def evaluate_model(model, env, num_episodes=10, deterministic=True):
+def evaluate_model(model, env, num_episodes=10, deterministic=True, device=None):
     """
-    评估模型性能
-    """
-    episode_rewards = []
-    episode_steps = []
-    collision_counts = []
-    lane_invasion_counts = []
+    评估模型在环境中的表现
 
-    # 获取模型所在的设备
-    device = next(model.policy.parameters()).device
+    参数:
+        model: 强化学习模型
+        env: 环境
+        num_episodes: 评估轮数
+        deterministic: 是否使用确定性动作
+        device: 模型所在设备
+
+    返回:
+        dict: 评估结果
+    """
+    import numpy as np
     print(f"模型运行在设备: {device}")
 
+    # 初始化结果统计
+    episode_rewards = []
+    episode_steps = []
+    episode_collisions = []
+    episode_lane_invasions = []
+
+    # 观测预处理函数
+    def preprocess_observation(obs):
+        """根据需要处理观测"""
+
+        # 如果观测是字典类型
+        if isinstance(obs, dict):
+            processed_obs = obs.copy()
+
+            # 处理LiDAR数据
+            if 'lidar' in processed_obs:
+                processed_obs['lidar'] = preprocess_lidar(processed_obs['lidar'])
+
+            return processed_obs
+
+        return obs
+
+    def preprocess_lidar(lidar_data):
+        """处理LiDAR数据确保形状正确"""
+
+        # 检查输入形状
+        if len(lidar_data.shape) == 2 and lidar_data.shape[1] == 3:
+            # 当接收到形状为(N, 3)的数据时，需要重塑为(32, 1024, 3)
+
+            # 确定点的数量
+            n_points = lidar_data.shape[0]
+
+            # 如果点数太少，进行填充
+            if n_points < 32 * 1024:
+                # 创建填充数组
+                padding = np.zeros((32 * 1024 - n_points, 3))
+                lidar_data = np.vstack([lidar_data, padding])
+            # 如果点数太多，进行裁剪
+            elif n_points > 32 * 1024:
+                lidar_data = lidar_data[:32 * 1024]
+
+            # 重塑为(32, 1024, 3)
+            lidar_data = lidar_data.reshape(32, 1024, 3)
+
+        # 如果已经是正确的形状，不做处理
+        elif lidar_data.shape == (32, 1024, 3):
+            pass
+        else:
+            print(f"警告: 意外的LiDAR数据形状: {lidar_data.shape}, 尝试调整")
+            # 尝试调整为期望的形状
+            total_points = np.prod(lidar_data.shape) // 3
+            if total_points >= 32 * 1024:
+                # 展平并重塑
+                flattened = lidar_data.reshape(-1, 3)
+                lidar_data = flattened[:32 * 1024].reshape(32, 1024, 3)
+            else:
+                # 创建空数组并填充可用数据
+                reshaped = np.zeros((32, 1024, 3))
+                flattened = lidar_data.reshape(-1, 3)
+                points_to_copy = min(flattened.shape[0], 32 * 1024)
+                reshaped.reshape(-1, 3)[:points_to_copy] = flattened[:points_to_copy]
+                lidar_data = reshaped
+
+        return lidar_data
+
     for i in range(num_episodes):
+        # 重置环境
         obs, _ = env.reset()
         done = False
-        episode_reward = 0
-        episode_step = 0
-        collision_count = 0
-        lane_invasion_count = 0
+        truncated = False
+        total_reward = 0
+        steps = 0
+        collisions = 0
+        lane_invasions = 0
 
-        while not done:
-            # 由于在特征提取器中已处理设备转换，可以直接使用原始观察值
-            # 但为了保险起见，这里仍进行转换
-            if isinstance(obs, dict):
-                # 字典类型观察值不需要特殊处理，特征提取器会处理其中的张量
-                pass
-            else:
-                # 单一类型观察值，如果是numpy数组则转换为tensor
-                if isinstance(obs, np.ndarray):
-                    obs = torch.from_numpy(obs).float()
+        # 预处理初始观测
+        obs = preprocess_observation(obs)
 
+        while not (done or truncated):
+            # 获取模型预测的动作
             action, _ = model.predict(obs, deterministic=deterministic)
-            obs, reward, terminated, truncated, info = env.step(action)
-            done = terminated or truncated
 
-            episode_reward += reward
-            episode_step += 1
+            # 如果动作是在CUDA上，将其移到CPU再转换为NumPy
+            if hasattr(action, 'device') and str(action.device) != 'cpu':
+                action = action.cpu().numpy()
 
-            # 记录碰撞和车道侵入
-            if 'collision_count' in info:
-                collision_count += info['collision_count']
-            if 'lane_invasion_count' in info:
-                lane_invasion_count += info['lane_invasion_count']
+            # 执行动作
+            obs, reward, done, truncated, info = env.step(action)
 
-        episode_rewards.append(episode_reward)
-        episode_steps.append(episode_step)
-        collision_counts.append(collision_count)
-        lane_invasion_counts.append(lane_invasion_count)
+            # 预处理观测
+            obs = preprocess_observation(obs)
 
-        print(f"Episode {i + 1}/{num_episodes}, Reward: {episode_reward:.2f}, Steps: {episode_step}")
+            # 更新统计信息
+            total_reward += reward
+            steps += 1
 
-    # 计算评估指标
+            # 记录碰撞和车道偏离
+            if 'collision' in info and info['collision']:
+                collisions += 1
+            if 'lane_invasion' in info and info['lane_invasion']:
+                lane_invasions += 1
+
+        # 记录本回合统计
+        episode_rewards.append(total_reward)
+        episode_steps.append(steps)
+        episode_collisions.append(collisions)
+        episode_lane_invasions.append(lane_invasions)
+
+        print(f"Episode {i + 1}/{num_episodes}, Reward: {total_reward:.2f}, Steps: {steps}")
+
+    # 计算平均统计
     mean_reward = np.mean(episode_rewards)
     std_reward = np.std(episode_rewards)
     mean_steps = np.mean(episode_steps)
-    mean_collisions = np.mean(collision_counts)
-    mean_lane_invasions = np.mean(lane_invasion_counts)
+    mean_collisions = np.mean(episode_collisions)
+    mean_lane_invasions = np.mean(episode_lane_invasions)
 
-    evaluation_results = {
+    return {
+        'episode_rewards': episode_rewards,
         'mean_reward': mean_reward,
         'std_reward': std_reward,
         'mean_steps': mean_steps,
         'mean_collisions': mean_collisions,
-        'mean_lane_invasions': mean_lane_invasions,
-        'episode_rewards': episode_rewards
+        'mean_lane_invasions': mean_lane_invasions
     }
-
-    return evaluation_results

@@ -3,6 +3,7 @@ import time
 import cv2
 import numpy as np
 import pygame
+import torch
 from pathlib import Path
 from stable_baselines3 import PPO
 
@@ -33,10 +34,22 @@ def visualize_agents(env_config, agent_config, train_config, checkpoint_path):
     seed = train_config.get('seed', 42)
     env.reset(seed=seed)
 
-    # 加载模型
+    # 加载模型 - 使用一致的设备策略
     print(f"加载模型: {checkpoint_path}")
-    device = "cuda" if train_config.get('device', 'auto') == 'cuda' else "cpu"
-    model = PPO.load(checkpoint_path, env=env, device=device)
+    # 确定是否使用CUDA
+    use_cuda = torch.cuda.is_available()
+    device = "cuda" if use_cuda else "cpu"
+    print(f"使用设备: {device}")
+
+    # 加载模型，直接指定设备
+    model = PPO.load(checkpoint_path, device=device)
+
+    # 确保策略在指定设备上
+    model.policy = model.policy.to(device)
+
+    # 显式设置所有子模块到正确设备
+    for param in model.policy.parameters():
+        param.data = param.data.to(device)
 
     # 初始化Pygame
     pygame.init()
@@ -79,8 +92,23 @@ def visualize_agents(env_config, agent_config, train_config, checkpoint_path):
                 # 渲染当前帧
                 render_img = env.render()
 
-                # 预测动作
-                action, _ = model.predict(obs, deterministic=deterministic)
+                # 统一处理观测数据到与模型相同的设备
+                if isinstance(obs, np.ndarray):
+                    obs_tensor = torch.FloatTensor(obs).to(device)
+                elif isinstance(obs, dict):
+                    obs_tensor = {}
+                    for k, v in obs.items():
+                        if isinstance(v, np.ndarray):
+                            obs_tensor[k] = torch.FloatTensor(v).to(device)
+                        elif isinstance(v, torch.Tensor):
+                            obs_tensor[k] = v.to(device)
+                        else:
+                            obs_tensor[k] = v
+                else:
+                    obs_tensor = obs  # 如果是其他类型，保持不变
+
+                # 使用处理后的obs进行预测
+                action, _ = model.predict(obs_tensor, deterministic=deterministic)
 
                 # 执行动作
                 obs, reward, terminated, truncated, info = env.step(action)
@@ -208,10 +236,22 @@ def visualize_with_sensors(env_config, agent_config, train_config, checkpoint_pa
     seed = train_config.get('seed', 42)
     env.reset(seed=seed)
 
-    # 加载模型
+    # 加载模型 - 使用一致的设备策略
     print(f"加载模型: {checkpoint_path}")
-    device = "cuda" if train_config.get('device', 'auto') == 'cuda' else "cpu"
-    model = PPO.load(checkpoint_path, env=env, device=device)
+    # 确定是否使用CUDA
+    use_cuda = torch.cuda.is_available()
+    device = "cuda" if use_cuda else "cpu"
+    print(f"使用设备: {device}")
+
+    # 加载模型，直接指定设备
+    model = PPO.load(checkpoint_path, device=device)
+
+    # 确保策略在指定设备上
+    model.policy = model.policy.to(device)
+
+    # 显式设置所有子模块到正确设备
+    for param in model.policy.parameters():
+        param.data = param.data.to(device)
 
     # 初始化Pygame
     pygame.init()
@@ -257,8 +297,23 @@ def visualize_with_sensors(env_config, agent_config, train_config, checkpoint_pa
             step = 0
 
             while not done and step < max_steps:
-                # 预测动作
-                action, _ = model.predict(obs, deterministic=deterministic)
+                # 统一处理观测数据到与模型相同的设备
+                if isinstance(obs, np.ndarray):
+                    obs_tensor = torch.FloatTensor(obs).to(device)
+                elif isinstance(obs, dict):
+                    obs_tensor = {}
+                    for k, v in obs.items():
+                        if isinstance(v, np.ndarray):
+                            obs_tensor[k] = torch.FloatTensor(v).to(device)
+                        elif isinstance(v, torch.Tensor):
+                            obs_tensor[k] = v.to(device)
+                        else:
+                            obs_tensor[k] = v
+                else:
+                    obs_tensor = obs  # 如果是其他类型，保持不变
+
+                # 使用处理后的obs进行预测
+                action, _ = model.predict(obs_tensor, deterministic=deterministic)
 
                 # 执行动作
                 obs, reward, terminated, truncated, info = env.step(action)
@@ -383,7 +438,7 @@ def visualize_with_sensors(env_config, agent_config, train_config, checkpoint_pa
             print(f"回合 {episode + 1} 完成，总奖励: {total_reward:.2f}")
 
     except KeyboardInterrupt:
-            print("\n用户中断可视化")
+        print("\n用户中断可视化")
 
     finally:
         # 清理资源
@@ -402,7 +457,7 @@ if __name__ == "__main__":
     from RL_multi.configs.train_config import TRAIN_CONFIG
 
     # 假设的模型路径
-    checkpoint_path = './checkpoints/carla_rl_test/final_model.zip'
+    checkpoint_path = 'D:/Research/Nick Yu/ADV/RL_multi/checkpoints/carla_rl_20250225-200501/final_model.zip'
 
     # 确保路径存在，否则跳过实际可视化
     if os.path.exists(checkpoint_path):

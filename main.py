@@ -24,7 +24,7 @@ def parse_args():
                         help="Path to load model checkpoint (for evaluation or visualization)")
     parser.add_argument("--seed", type=int, default=42,
                         help="Random seed")
-    parser.add_argument("--total-timesteps", type=int, default=1000000,
+    parser.add_argument("--total-timesteps", type=int, default=10240,
                         help="Total timesteps for training")
     return parser.parse_args()
 

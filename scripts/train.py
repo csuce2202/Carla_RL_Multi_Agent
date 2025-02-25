@@ -102,9 +102,9 @@ def train_agents(env_config, agent_config, train_config):
 
 if __name__ == "__main__":
     # 测试训练函数
-    from configs.env_config import ENV_CONFIG
-    from configs.agent_config import AGENT_CONFIG
-    from configs.train_config import TRAIN_CONFIG
+    from RL_multi.configs.env_config import ENV_CONFIG
+    from RL_multi.configs.agent_config import AGENT_CONFIG
+    from RL_multi.configs.train_config import TRAIN_CONFIG
 
     # 修改配置以加快测试
     test_env_config = ENV_CONFIG.copy()

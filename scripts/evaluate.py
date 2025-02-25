@@ -3,23 +3,19 @@ import time
 import json
 import numpy as np
 import matplotlib.pyplot as plt
+from gym.vector.utils import spaces
 from stable_baselines3 import PPO
-
 from RL_multi.envs.carla_env import CARLAEnv
 from RL_multi.agents.agent_utils import evaluate_model
 
 
 def evaluate_agents(env_config, agent_config, train_config, checkpoint_path):
-    """
-    评估训练好的RL智能体
-
-    参数:
-        env_config: 环境配置
-        agent_config: 智能体配置
-        train_config: 训练配置
-        checkpoint_path: 模型检查点路径
-    """
+    """评估训练好的RL智能体"""
     print(f"开始评估模型: {checkpoint_path}")
+
+    # 明确设置为CUDA设备
+    device = "cuda"
+    print(f"使用设备: {device}")
 
     # 创建评估环境
     print("创建评估环境...")
@@ -32,10 +28,13 @@ def evaluate_agents(env_config, agent_config, train_config, checkpoint_path):
     seed = train_config.get('seed', 42)
     env.reset(seed=seed)
 
-    # 加载模型
+    # 确保使用CUDA加载模型
     print(f"加载模型: {checkpoint_path}")
-    device = "cuda" if train_config.get('device', 'auto') == 'cuda' else "cpu"
     model = PPO.load(checkpoint_path, env=env, device=device)
+
+    # 验证模型确实在目标设备上
+    model_device = next(model.policy.parameters()).device
+    print(f"模型权重设备: {model_device}")
 
     # 评估参数
     num_episodes = train_config.get('eval_episodes', 10)
@@ -43,7 +42,9 @@ def evaluate_agents(env_config, agent_config, train_config, checkpoint_path):
 
     # 开始评估
     print(f"开始评估 {num_episodes} 个回合...")
-    eval_results = evaluate_model(model, env, num_episodes, deterministic)
+
+    # 添加模型设备信息以便 evaluate_model 函数可以处理
+    eval_results = evaluate_model(model, env, num_episodes, deterministic, device=model_device)
 
     # 打印评估结果
     print("\n===== 评估结果 =====")
@@ -169,7 +170,7 @@ if __name__ == "__main__":
         evaluate_agents(ENV_CONFIG, AGENT_CONFIG, TRAIN_CONFIG, checkpoint_path)
 
         # 在不同地图上评估
-        evaluate_on_maps(ENV_CONFIG, AGENT_CONFIG, TRAIN_CONFIG, checkpoint_path, ['Town01', 'Town02'])
+        evaluate_on_maps(ENV_CONFIG, AGENT_CONFIG, TRAIN_CONFIG, checkpoint_path, ['Town02', 'Town03', 'Town04', 'Town05'])
     else:
         print(f"模型文件不存在: {checkpoint_path}")
         print("跳过评估")
