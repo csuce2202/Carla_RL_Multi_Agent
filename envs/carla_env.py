@@ -36,6 +36,7 @@ class CARLAEnv(gym.Env):
         self.client = None
         self.world = None
         self.map = None
+        self.spawn_points = []  # Initialize as empty list
         self.connect_carla()
 
         # 初始化输入/输出大小
@@ -47,7 +48,6 @@ class CARLAEnv(gym.Env):
         self.sensor_data = {}
         self.collision_history = {}
         self.lane_invasion_history = {}
-        self.spawn_points = []
 
         # 可视化相关
         self.pygame_display = None
@@ -85,6 +85,7 @@ class CARLAEnv(gym.Env):
 
             self.map = self.world.get_map()
             self.spawn_points = self.map.get_spawn_points()
+            print(f"Number of spawn points: {len(self.spawn_points)}")  # Debug statement
 
             # 设置同步模式
             if self.synchronous:
@@ -104,6 +105,14 @@ class CARLAEnv(gym.Env):
             # 简单的检查，确保连接成功
             if not self.world:
                 raise ConnectionError("无法连接到CARLA世界")
+
+            # Tick world to ensure settings are applied
+            if self.synchronous:
+                self.world.tick()
+
+            # 重新获取spawn points to ensure they're up to date
+            self.spawn_points = self.world.get_map().get_spawn_points()
+            print(f"Updated number of spawn points: {len(self.spawn_points)}")
 
         except Exception as e:
             print(f"连接CARLA服务器失败: {e}")
@@ -283,6 +292,15 @@ class CARLAEnv(gym.Env):
         # 重置步数
         self.current_step = 0
 
+        # Ensure the map and world are still valid
+        if self.world is None or self.map is None:
+            print("Reconnecting to CARLA server...")
+            self.connect_carla()
+
+        # Refresh spawn points
+        self.spawn_points = self.world.get_map().get_spawn_points()
+        print(f"Number of spawn points at reset: {len(self.spawn_points)}")
+
         # 为每个智能体生成车辆
         if len(self.spawn_points) < self.num_agents:
             raise ValueError(f"地图上没有足够的生成点，需要 {self.num_agents} 个，但只有 {len(self.spawn_points)} 个")
@@ -295,9 +313,25 @@ class CARLAEnv(gym.Env):
             # 创建车辆
             blueprint = random.choice([bp for bp in self.world.get_blueprint_library().filter('vehicle.*')
                                        if int(bp.get_attribute('number_of_wheels')) == 4])
-            vehicle = self.world.spawn_actor(blueprint, selected_spawns[i])
-            vehicle.set_autopilot(False)
-            self.vehicles.append(vehicle)
+
+            # Try to spawn the vehicle, with retries
+            vehicle = None
+            max_retries = 5
+            for attempt in range(max_retries):
+                try:
+                    spawn_point = selected_spawns[i]
+                    vehicle = self.world.spawn_actor(blueprint, spawn_point)
+                    vehicle.set_autopilot(False)
+                    self.vehicles.append(vehicle)
+                    break
+                except Exception as e:
+                    print(f"Spawn attempt {attempt + 1}/{max_retries} failed: {e}")
+                    if attempt == max_retries - 1:
+                        print("Failed to spawn vehicle after maximum retries")
+                        raise
+                    # Try a different spawn point
+                    if len(self.spawn_points) > i + attempt + 1:
+                        selected_spawns[i] = self.spawn_points[i + attempt + 1]
 
             # 为车辆添加传感器
             self._setup_sensors(i, vehicle)
@@ -745,6 +779,23 @@ class CARLAEnv(gym.Env):
         elif self.render_mode == 'rgb_array' and 'camera' in self.sensor_data[0]:
             # 返回RGB数组用于其他可视化
             return self.sensor_data[0]['camera']
+
+    def _process_imu_data(self, agent_id, data):
+        """处理IMU数据"""
+        # 提取加速度、陀螺仪和指南针数据
+        accel = data.accelerometer  # Vector3D
+        gyro = data.gyroscope  # Vector3D
+        compass = data.compass  # float (in radians)
+
+        # 将数据转换为numpy数组
+        imu_data = np.array([
+            accel.x, accel.y, accel.z,  # 加速度
+            gyro.x, gyro.y, gyro.z,  # 陀螺仪
+            compass  # 指南针
+        ], dtype=np.float32)
+
+        # 存储数据
+        self.sensor_data[agent_id]['imu'] = imu_data
 
     def close(self):
         """关闭环境并清理资源"""

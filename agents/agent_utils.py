@@ -187,6 +187,10 @@ def evaluate_model(model, env, num_episodes=10, deterministic=True):
     collision_counts = []
     lane_invasion_counts = []
 
+    # 获取模型所在的设备
+    device = next(model.policy.parameters()).device
+    print(f"模型运行在设备: {device}")
+
     for i in range(num_episodes):
         obs, _ = env.reset()
         done = False
@@ -196,6 +200,16 @@ def evaluate_model(model, env, num_episodes=10, deterministic=True):
         lane_invasion_count = 0
 
         while not done:
+            # 由于在特征提取器中已处理设备转换，可以直接使用原始观察值
+            # 但为了保险起见，这里仍进行转换
+            if isinstance(obs, dict):
+                # 字典类型观察值不需要特殊处理，特征提取器会处理其中的张量
+                pass
+            else:
+                # 单一类型观察值，如果是numpy数组则转换为tensor
+                if isinstance(obs, np.ndarray):
+                    obs = torch.from_numpy(obs).float()
+
             action, _ = model.predict(obs, deterministic=deterministic)
             obs, reward, terminated, truncated, info = env.step(action)
             done = terminated or truncated

@@ -99,7 +99,7 @@ def evaluate_on_maps(env_config, agent_config, train_config, checkpoint_path, ma
         maps: 要评估的地图列表，如果为None则使用默认地图列表
     """
     if maps is None:
-        maps = ['Town01', 'Town02', 'Town03', 'Town04', 'Town05']
+        maps = ['Town10HD_Opt', 'Town02', 'Town03', 'Town04', 'Town05']
 
     results = {}
 
@@ -157,12 +157,12 @@ def evaluate_on_maps(env_config, agent_config, train_config, checkpoint_path, ma
 
 if __name__ == "__main__":
     # 测试评估函数
-    from configs.env_config import ENV_CONFIG
-    from configs.agent_config import AGENT_CONFIG
-    from configs.train_config import TRAIN_CONFIG
+    from RL_multi.configs.env_config import ENV_CONFIG
+    from RL_multi.configs.agent_config import AGENT_CONFIG
+    from RL_multi.configs.train_config import TRAIN_CONFIG
 
     # 假设的模型路径
-    checkpoint_path = './checkpoints/carla_rl_test/final_model.zip'
+    checkpoint_path = 'D:/Research/Nick Yu/ADV/RL_multi/checkpoints/carla_rl_20250225-200501/final_model.zip'
 
     # 确保路径存在，否则跳过实际评估
     if os.path.exists(checkpoint_path):
