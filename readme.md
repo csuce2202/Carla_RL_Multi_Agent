@@ -2,7 +2,7 @@
 
 This project implements a multi-agent reinforcement learning system for autonomous driving using CARLA simulator, Ray, and Stable-Baselines3.
 
-## 环境要求
+## Environment requirements
 
 - CARLA-0.9.15
 - Python 3.7.9
@@ -13,159 +13,159 @@ This project implements a multi-agent reinforcement learning system for autonomo
 - TensorFlow 2.3.1
 - TensorBoard 2.1.0
 
-## 项目结构
+## Project structure
 
 ```
 carla_marl/
-├── agents/                 # RL智能体实现
-│   ├── __init__.py
-│   ├── rl_agent.py         # RL智能体类
-│   └── agent_utils.py      # 智能体工具函数
-├── envs/                   # 环境包装器
-│   ├── __init__.py
-│   ├── carla_env.py        # CARLA环境
-│   └── env_utils.py        # 环境工具函数
-├── models/                 # 模型定义
-│   ├── __init__.py
-│   └── ppo_model.py        # PPO模型实现
-├── utils/                  # 实用工具
-│   ├── __init__.py
-│   ├── carla_utils.py      # CARLA工具函数
-│   └── visualization.py    # 可视化工具
-├── configs/                # 配置文件
-│   ├── __init__.py
-│   ├── env_config.py       # 环境配置
-│   ├── agent_config.py     # 智能体配置
-│   └── train_config.py     # 训练配置
-├── scripts/                # 脚本
-│   ├── __init__.py
-│   ├── train.py            # 训练脚本
-│   ├── evaluate.py         # 评估脚本
-│   └── visualize.py        # 可视化脚本
-└── main.py                 # 主入口程序
+├── agents/ # RL agent implementation
+│ ├── __init__.py
+│ ├── rl_agent.py # RL agent class
+│ └── agent_utils.py # Agent tool function
+├── envs/ # Environment wrapper
+│ ├── __init__.py
+│ ├── carla_env.py # CARLA environment
+│ └── env_utils.py # Environment tool function
+├── models/ # Model definition
+│ ├── __init__.py
+│ └── ppo_model.py # PPO model implementation
+├── utils/ # Utility tools
+│ ├── __init__.py
+│ ├── carla_utils.py # CARLA tool function
+│ └── visualization.py # Visualization tool
+├── configs/ # Configuration file
+│ ├── __init__.py
+│ ├── env_config.py # Environment configuration
+│ ├── agent_config.py # Agent configuration
+│ └── train_config.py # Training configuration
+├── scripts/ # script
+│ ├── __init__.py
+│ ├── train.py # training script
+│ ├── evaluate.py # evaluation script
+│ └── visualize.py # visualization script
+└── main.py # main entry program
 ```
 
-## 功能特性
+## Features
 
-- 多智能体强化学习：支持多车辆同时学习
-- 多传感器融合：整合相机、激光雷达、雷达、GNSS、IMU等多种传感器数据
-- 灵活的环境配置：可自定义地图、天气、传感器参数等
-- 高效的训练：使用Ray进行分布式训练
-- 可视化工具：支持训练过程和评估结果的可视化
-- 模型评估：支持在不同地图上评估模型性能
+- Multi-agent reinforcement learning: supports simultaneous learning of multiple vehicles
+- Multi-sensor fusion: integrates multiple sensor data such as camera, lidar, radar, GNSS, IMU, etc.
+- Flexible environment configuration: customizable maps, weather, sensor parameters, etc.
+- Efficient training: use Ray for distributed training
+- Visualization tool: supports visualization of training process and evaluation results
+- Model evaluation: supports evaluation of model performance on different maps
 
-## 使用方法
+## Usage
 
-### 环境准备
+### Environment preparation
 
-确保已安装CARLA-0.9.15，并设置环境变量：
+Make sure CARLA-0.9.15 is installed and the environment variables are set:
 
 ```bash
-export CARLA_ROOT=/path/to/carla/  # CARLA根目录
+export CARLA_ROOT=/path/to/carla/ # CARLA root directory
 export PYTHONPATH=$PYTHONPATH:$CARLA_ROOT/PythonAPI/carla/dist/carla-0.9.15-py3.7-linux-x86_64.egg
 ```
 
-安装依赖:
+Install dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 训练
+### Training
 
-运行以下命令开始训练：
+Run the following command to start training:
 
 ```bash
 python main.py --mode train --map Town01 --num-agents 4
 ```
 
-可选参数:
-- `--map`：指定训练使用的地图
-- `--num-agents`：指定训练的智能体数量
-- `--seed`：随机种子
-- `--total-timesteps`：训练总步数
+Optional parameters:
+- `--map`: Specify the map used for training
+- `--num-agents`: Specify the number of agents to be trained
+- `--seed`: Random seed
+- `--total-timesteps`: Total number of training steps
 
-### 评估
+### Evaluation
 
-使用训练好的模型进行评估：
+Use the trained model for evaluation:
 
 ```bash
 python main.py --mode evaluate --map Town02 --checkpoint-path ./checkpoints/final_model
 ```
 
-可选参数:
-- `--map`：指定评估使用的地图
-- `--checkpoint-path`：模型检查点路径
+Optional parameters:
+- `--map`: Specify the map used for evaluation
+- `--checkpoint-path`: Model checkpoint path
 
-### 可视化
+### Visualization
 
-可视化智能体的行为：
+Visualize the behavior of the agent:
 
 ```bash
 python main.py --mode visualize --map Town03 --checkpoint-path ./checkpoints/final_model
 ```
 
-## 自定义配置
+## Custom configuration
 
-可以通过修改以下配置文件来自定义系统参数：
+You can customize system parameters by modifying the following configuration files:
 
-- `configs/env_config.py`：环境参数设置
-- `configs/agent_config.py`：智能体参数设置
-- `configs/train_config.py`：训练参数设置
+- `configs/env_config.py`: Environment parameter settings
+- `configs/agent_config.py`: Agent parameter settings
+- `configs/train_config.py`: Training parameter settings
 
-## 主要组件
+## Main components
 
-### CARLA环境 (envs/carla_env.py)
+### CARLA environment (envs/carla_env.py)
 
-CARLA环境封装器实现了Gymnasium接口，提供了以下功能：
-- 管理车辆和传感器的创建和销毁
-- 处理传感器数据
-- 计算奖励和观察
-- 检测终止条件
+The CARLA environment wrapper implements the Gymnasium interface and provides the following functions:
+- Manage the creation and destruction of vehicles and sensors
+- Process sensor data
+- Calculate rewards and observations
+- Detecting termination conditions
 
-### RL智能体 (agents/rl_agent.py)
+### RL Agent (agents/rl_agent.py)
 
-RL智能体类封装了Stable-Baselines3的PPO算法：
-- 支持多传感器输入
-- 自定义网络架构
-- 提供了训练、评估和预测接口
+RL Agent class encapsulates the PPO algorithm of Stable-Baselines3:
+- Supports multiple sensor inputs
+- Custom network architecture
+- Provides training, evaluation and prediction interfaces
 
-### 可视化工具 (utils/visualization.py)
+### Visualization Tool (utils/visualization.py)
 
-可视化工具提供了：
-- 激光雷达点云可视化
-- 车辆信息显示
-- 轨迹绘制
-- 奖励历史绘制
+The visualization tool provides:
+- LiDAR point cloud visualization
+- Vehicle information display
+- Trajectory drawing
+- Reward history drawing
 
-## 训练提示
+## Training Tips
 
-- 开始时可以使用较简单的地图（如Town01）
-- 适当调整奖励函数以促进期望行为
-- 使用较长的训练时间（至少100万步）获得较好的性能
-- 训练后在多个不同地图上评估性能，检查泛化能力
+- You can use a simpler map (such as Town01) at the beginning
+- Adjust the reward function appropriately to promote the desired behavior
+- Use a longer training time (at least 1 million steps) to get better performance
+- Evaluate performance on multiple different maps after training to check generalization ability
 
-## 自定义扩展
+## Custom Extensions
 
-### 添加新的传感器
+### Add new sensors
 
-修改`envs/carla_env.py`中的`_setup_sensors`方法添加新的传感器类型。
+Modify the `_setup_sensors` method in `envs/carla_env.py` to add new sensor types.
 
-### 修改奖励函数
+### Modify the reward function
 
-在`envs/carla_env.py`的`_compute_reward`方法中自定义奖励计算方式。
+Customize the reward calculation method in the `_compute_reward` method of `envs/carla_env.py`.
 
-### 使用不同的RL算法
+### Use different RL algorithms
 
-可以通过修改`agents/rl_agent.py`，集成Stable-Baselines3的其他算法，如SAC、TD3等。
+You can integrate other algorithms of Stable-Baselines3, such as SAC, TD3, etc., by modifying `agents/rl_agent.py`.
 
-## 故障排除
+## Troubleshooting
 
-- 确保CARLA服务器正在运行
-- 检查端口配置是否正确（默认为2000）
-- 检查CARLA版本是否匹配（0.9.15）
-- 确保显卡驱动和CUDA版本兼容
+- Make sure the CARLA server is running
+- Check if the port configuration is correct (default is 2000)
+- Check if the CARLA version matches (0.9.15)
+- Make sure the graphics driver and CUDA version are compatible
 
-## 许可证
+## License
 
 [MIT License](LICENSE)
